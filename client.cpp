@@ -1,69 +1,63 @@
-#define BOOST_DATE_TIME_NO_LIB
-#include<iostream>
-#include<string>
-#include <future>
-#include<chrono>
-#include<map>
-#include<atomic>
+#include <iostream>
+#include <string>
 #include <thread>
+#include <future>
 #include <boost/asio.hpp>
-
 class Client {
 private:
-    std::atomic<bool> flag = false, end = false;
-    std::string personal_name;
-    std::string local_host = "127.0.0.1";
-    int port = 3333;
-    boost::asio::io_service io_service;
-    boost::asio::ip::tcp::socket socket;
-    boost::asio::ip::tcp::endpoint endpoint;
+	std::string local_host = "127.0.0.1";
+	int port = 3333;
+	boost::asio::ip::tcp::endpoint endpoint_;
+	boost::asio::io_service io_service;
+	boost::asio::ip::tcp::socket socket_;
+	std::string personal_name;
 public:
-    explicit Client(): endpoint(boost::asio::ip::address::from_string(local_host), port), socket(io_service, endpoint.protocol()) {
-        socket.connect(endpoint);
-        std::cout << "Please, enter your name to join the chat: " << std::endl;
-        std::getline(std::cin, personal_name);
-        boost::asio::write(socket, boost::asio::buffer(personal_name + '\n'));
-    }
-    void start() {
-        std::future<void> th1 = std::async(&Client::send, this);
-        std::future<void> th2 = std::async(&Client::get, this);
-        th1.get();
-        th2.get();
-        system("pause");
-    }
-    void send()
-    {
-        while (true) {
-            std::string output;
-            while (std::getline(std::cin, output)) {
-                boost::asio::write(socket, boost::asio::buffer("["+personal_name+"]" + " " + output + '\n'));
-            }
-            output = "EOF";
-            boost::asio::write(socket, boost::asio::buffer(output + '\n'));
-        }
-    }
-    void get() {
-        
-        while (!end.load()) {
-                boost::asio::streambuf str_buf;
-                boost::asio::read_until(socket, str_buf, '\n');
-                std::istream input_stream(&str_buf);
-                std::string message;
-                std::getline(input_stream, message);
-                if (message == "EOF") {
-                    break;
-                }
-                std::cout << message << std::endl;
-            }
+	explicit Client() : endpoint_(boost::asio::ip::address::from_string(local_host), port), socket_(io_service, endpoint_.protocol()) {
+		socket_.connect(endpoint_);
+		std::cout << "Please, enter your name to join the chat: " << std::endl;
+		std::getline(std::cin, personal_name);
+		boost::asio::write(socket_, boost::asio::buffer(personal_name + '\n'));
 
-        }
-   
-        
+	}
+	void start() {
+		std::future<void> tr_get= std::async(&Client::get, this);
+		std::future<void> tr_send = std::async(&Client::send, this);
+		
+		tr_get.get();
+		tr_send.get();
+	}
+	void get()
+	{
+		while (true) {
+			boost::asio::streambuf str_buf;
+			boost::asio::read_until(socket_, str_buf, '\n');
+			std::istream input_stream(&str_buf);
+			std::string message;
+			std::getline(input_stream, message);
+			if (message == "EOF") break;
+			std::cout << message << std::endl;
+		}
+
+	}
+	void send()
+	{
+		std::string output;
+		while (std::getline(std::cin, output)) {
+			boost::asio::write(socket_, boost::asio::buffer("[" + personal_name + "]" + " " + output + '\n'));
+		}
+		output = "EOF";
+		boost::asio::write(socket_, boost::asio::buffer(output + '\n'));
+	}
+
+
 };
-int main() {
-   // system("chcp 1251");
-    Client().start();
-    system("pause");
-    return EXIT_SUCCESS;
 
+
+
+int main()
+{
+	Client().start();
+	system("pause");
+
+	return EXIT_SUCCESS;
 }
