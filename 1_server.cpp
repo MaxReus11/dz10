@@ -8,15 +8,15 @@
 #include <condition_variable>
 class ClientOnServer {
 private:
-	
+
 	boost::asio::ip::tcp::socket m_socket;
 	std::string personal_name;
 	std::mutex m_mutex;
 	std::string m_message;
 	std::atomic<bool> m_flag;
 public:
-	
-	ClientOnServer(boost::asio::ip::tcp::socket socket, std::condition_variable* con_, std::string* message_, std::mutex* mutex_, 
+
+	ClientOnServer(boost::asio::ip::tcp::socket socket, std::condition_variable* con_, std::string* message_, std::mutex* mutex_,
 		std::atomic<bool>* flag) : m_socket(std::move(socket)) {
 		boost::asio::streambuf str_buf;
 		boost::asio::read_until(m_socket, str_buf, '\n');
@@ -67,23 +67,26 @@ public:
 				boost::asio::write(m_socket, boost::asio::buffer(m_message + " leave the chat\n"));
 			}
 			else {
-				if (!m_flag) boost::asio::write(m_socket, boost::asio::buffer(m_message + "\n"));
-				else m_flag = false;
+				if (!m_flag) {
+					boost::asio::write(m_socket, boost::asio::buffer(m_message + "\n"));
+				}
+				else {
+					m_flag = false;
+				}
 			}
 		}
 	}
-	
+
 };
 class Server {
 private:
 	int port = 3333;
-	std::string localhost = "127.0.0.1";
 	const std::size_t size = 30;
 	boost::asio::ip::tcp::endpoint endpoint;
 	boost::asio::io_service io_service;
-	std::condition_variable* con_;
+	std::condition_variable con_;
 	boost::asio::ip::tcp::acceptor acceptor;
-	std::string message_= " ";
+	std::string message_ = " ";
 	std::mutex mutex_;
 	std::atomic<bool> close_flag = false;
 	std::atomic<bool> flag = false;
@@ -100,13 +103,13 @@ public:
 			return;
 		}
 		std::future<void> tr_start = std::async(&Server::start, this);
-		ClientOnServer client(std::move(socket), con_, &message_, &mutex_, &flag);
+		ClientOnServer client(std::move(socket), &con_, &message_, &mutex_, &flag);
 		tr_start.get();
 	}
 };
 
 int main()
-{
+{	
 	Server().start();
 	system("pause");
 	return EXIT_SUCCESS;
